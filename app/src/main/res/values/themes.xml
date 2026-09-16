@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_dim</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="alertDialogTheme">@style/AppTheme.Dialog</item>
+    </style>
+
+    <style name="AppTheme.Dialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/text_dim</item>
+        <item name="colorAccent">@color/accent</item>
+    </style>
+
+    <style name="CardTitle">
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <style name="FieldLabel">
+        <item name="android:textColor">@color/text_dim</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <!-- 这些“按钮”都是 TextView：自己画背景，避开 AppCompat Button 的背景着色 -->
+    <style name="PanelBtn">
+        <item name="android:background">@drawable/bg_btn</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">42dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingLeft">4dp</item>
+        <item name="android:paddingRight">4dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="PanelBtn.Primary">
+        <item name="android:background">@drawable/bg_btn_primary</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="PanelBtn.Slim">
+        <item name="android:minHeight">34dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+    </style>
+
+    <style name="DpadBtn">
+        <item name="android:background">@drawable/bg_btn</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="StepChip">
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:textColor">@color/chip_text</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">34dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="NumField">
+        <item name="android:background">@drawable/bg_input</item>
+        <item name="android:backgroundTint">@null</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textColorHint">@color/text_dim</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:inputType">numberDecimal|numberSigned</item>
+        <item name="android:imeOptions">actionNext</item>
+    </style>
+
+</resources>

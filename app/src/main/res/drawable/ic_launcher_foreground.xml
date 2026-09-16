@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 中心十字准星：模拟位置 = 把点钉在想要的地方 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,20 L54,34 M54,74 L54,88 M20,54 L34,54 M74,54 L88,54"
+        android:strokeAlpha="0.55"
+        android:strokeColor="#FF38E07B"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.4" />
+    <path
+        android:fillColor="#FF38E07B"
+        android:fillType="evenOdd"
+        android:pathData="M54,32C46.82,32 41,37.82 41,45c0,9.75 13,23 13,23s13,-13.25 13,-23C67,37.82 61.18,32 54,32zM54,49.5c-2.49,0 -4.5,-2.01 -4.5,-4.5s2.01,-4.5 4.5,-4.5 4.5,2.01 4.5,4.5 -2.01,4.5 -4.5,4.5z" />
+</vector>

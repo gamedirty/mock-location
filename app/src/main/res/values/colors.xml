@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF0B0F14</color>
+    <color name="surface">#FF141A22</color>
+    <color name="surface2">#FF1D2632</color>
+    <color name="line">#FF26313F</color>
+    <color name="text">#FFE8EEF5</color>
+    <color name="text_dim">#FF8A98A8</color>
+    <color name="accent">#FF38E07B</color>
+    <color name="accent_dim">#FF1E7A45</color>
+    <color name="amber">#FFFFB020</color>
+    <color name="danger">#FFFF5C5C</color>
+    <color name="ink">#FF0B0F14</color>
+</resources>

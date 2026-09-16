@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">位置模拟</string>
+    <string name="title_map_picker">地图选点</string>
+    <string name="noti_title">位置模拟运行中</string>
+    <string name="noti_channel">模拟位置服务</string>
+    <string name="action_stop">停止</string>
+    <string name="hint_lat">纬度</string>
+    <string name="hint_lng">经度</string>
+</resources>

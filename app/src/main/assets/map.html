@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>选点</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0b0f14;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  }
+  #map { position: fixed; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; touch-action: none; }
+  #layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  .tile { position: absolute; width: 256px; height: 256px; pointer-events: none; background: #121a22; }
+  #marker { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 6; }
+  #marker svg { position: absolute; left: -12px; top: -36px; }
+  #zoom { position: fixed; right: 10px; top: 42%; z-index: 8; }
+  .zbtn {
+    width: 44px; height: 44px; margin-bottom: 8px; border-radius: 12px;
+    border: 1px solid #26313f; background: rgba(20,26,34,.94); color: #e8eef5;
+    font-size: 24px; line-height: 44px; text-align: center;
+  }
+  .zbtn:active { background: rgba(56,224,123,.25); }
+  #toast {
+    position: fixed; left: 50%; top: 54px; transform: translateX(-50%); z-index: 9;
+    background: rgba(11,15,20,.88); color: #8a98a8; font-size: 12px;
+    padding: 5px 12px; border-radius: 9px; opacity: 0; transition: opacity .25s;
+    pointer-events: none; max-width: 86%; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="map">
+  <div id="layer">
+    <div id="marker">
+      <svg width="24" height="36" viewBox="0 0 24 36">
+        <path d="M12,1.2 C5.9,1.2 1,6.1 1,12.2 C1,21.2 12,34.6 12,34.6 S23,21.2 23,12.2 C23,6.1 18.1,1.2 12,1.2 Z"
+              fill="#38e07b" stroke="#0b0f14" stroke-width="1.8" />
+        <circle cx="12" cy="12.2" r="4.2" fill="#0b0f14" />
+      </svg>
+    </div>
+  </div>
+</div>
+<div id="zoom">
+  <div class="zbtn" id="zin">+</div>
+  <div class="zbtn" id="zout">−</div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TS = 256;
+  var mapEl = document.getElementById("map");
+  var layer = document.getElementById("layer");
+  var markerEl = document.getElementById("marker");
+  var toastEl = document.getElementById("toast");
+
+  var SRC = {
+    // 高德路网瓦片：国内直连快、中文标注，坐标系 GCJ-02
+    gcj: {
+      max: 18,
+      url: function (x, y, z) {
+        var s = 1 + ((x + y) % 4);
+        return "https://webrd0" + s + ".is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=" + x + "&y=" + y + "&z=" + z;
+      }
+    },
+    // OSM 瓦片：原生 WGS-84 无偏移，国外/需要精确对应时用（国内直连很慢）
+    wgs: {
+      max: 19,
+      url: function (x, y, z) {
+        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
+      }
+    }
+  };
+
+  var source = "gcj";
+  var z = 16;
+  var clat = 39.9042;
+  var clng = 116.4074;
+  var W = 0, H = 0;
+  var INSET_T = 0, INSET_B = 0;   // 上下两条原生工具条遮住的高度（CSS px）
+  var marker = null;              // 地图坐标系（底图那一套）下的 {lat,lng}
+  var tiles = {};                 // "z/x/y" -> {el, sx, sy}
+  var lastTileError = 0;
+
+  // ---------------- 投影 ----------------
+  function wsize() { return TS * Math.pow(2, z); }
+  function lng2x(lng) { return (lng + 180) / 360 * wsize(); }
+  function lat2y(lat) {
+    var s = Math.sin(lat * Math.PI / 180);
+    if (s > 0.9999) s = 0.9999;
+    if (s < -0.9999) s = -0.9999;
+    return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * wsize();
+  }
+  function x2lng(x) { return x / wsize() * 360 - 180; }
+  function y2lat(y) {
+    var n = Math.PI - 2 * Math.PI * y / wsize();
+    return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  }
+
+  // 世界坐标 -> 屏幕坐标。世界坐标是千万级的大数，直接写进 DOM 会被浏览器
+  // 的布局精度截断，所以统一在这里转成屏幕坐标，DOM 里只见几百以内的小数。
+  function tx() { return W / 2 - lng2x(clng); }
+  function midY() { return INSET_T + Math.max(60, H - INSET_T - INSET_B) / 2; }
+  function ty() { return midY() - lat2y(clat); }
+
+  function measure() {
+    W = mapEl.clientWidth || window.innerWidth || 0;
+    H = mapEl.clientHeight || window.innerHeight || 0;
+  }
+
+  // ---------------- 渲染 ----------------
+  function makeTile(key, x, y) {
+    var img = document.createElement("img");
+    img.className = "tile";
+    img.onerror = function () {
+      if (Date.now() - lastTileError < 4000) return;
+      lastTileError = Date.now();
+      showToast("底图加载不出来，可能是网络问题；可以改用 OSM 底图，或用方向键微调");
+    };
+    img.src = SRC[source].url(x, y, z);
+    layer.appendChild(img);
+    return { el: img, sx: null, sy: null };
+  }
+
+  function clearTiles() {
+    for (var k in tiles) {
+      if (tiles[k].el.parentNode) tiles[k].el.parentNode.removeChild(tiles[k].el);
+    }
+    tiles = {};
+  }
+
+  /** 重画：只给可见瓦片算屏幕坐标，越界的移除，新进入的补上 */
+  function render() {
+    var t_x = tx(), t_y = ty();
+    var n = Math.pow(2, z);
+    var x0 = Math.floor(-t_x / TS), x1 = Math.floor((-t_x + W) / TS);
+    var y0 = Math.floor(-t_y / TS), y1 = Math.floor((-t_y + H) / TS);
+    var want = {};
+    var x, y, key, t, sx, sy;
+
+    for (x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
+      for (y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) {
+        key = z + "/" + x + "/" + y;
+        want[key] = 1;
+        t = tiles[key];
+        if (!t) t = tiles[key] = makeTile(key, x, y);
+        sx = x * TS + t_x;
+        sy = y * TS + t_y;
+        if (t.sx !== sx) { t.el.style.left = sx + "px"; t.sx = sx; }
+        if (t.sy !== sy) { t.el.style.top = sy + "px"; t.sy = sy; }
+      }
+    }
+    for (var k in tiles) {
+      if (!want[k]) {
+        if (tiles[k].el.parentNode) tiles[k].el.parentNode.removeChild(tiles[k].el);
+        delete tiles[k];
+      }
+    }
+    placeMarker();
+  }
+
+  function placeMarker() {
+    if (!marker) return;
+    markerEl.style.left = (lng2x(marker.lng) + tx()) + "px";
+    markerEl.style.top = (lat2y(marker.lat) + ty()) + "px";
+  }
+
+  var renderQueued = false;
+  function scheduleRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(function () { renderQueued = false; render(); });
+  }
+
+  /** 量一次尺寸再重画：WebView 首次回调时视口可能还没算出来，得能重复调用 */
+  function relayout() {
+    measure();
+    render();
+  }
+  window.relayout = relayout;
+
+  // ---------------- 选点 ----------------
+  function setMarker(lat, lng, quiet) {
+    marker = { lat: lat, lng: lng };
+    placeMarker();
+    if (!quiet) report();
+  }
+
+  function report() {
+    if (!marker) return;
+    if (window.Android && Android.onPick) Android.onPick(marker.lat, marker.lng);
+    if (window.Android && Android.onZoom) Android.onZoom(z);
+  }
+
+  // ---------------- 缩放 ----------------
+  function setZoom(nz, ax, ay) {
+    nz = Math.max(3, Math.min(SRC[source].max, Math.round(nz)));
+    if (nz === z) return;
+    if (ax === undefined || ax === null) { ax = W / 2; ay = midY(); }
+    // 让锚点处的地理位置保持在原来的像素位置
+    var latA = y2lat(ay - ty());
+    var lngA = x2lng(ax - tx());
+    z = nz;
+    clearTiles();
+    var ntx = ax - lng2x(lngA);
+    var nty = ay - lat2y(latA);
+    clng = x2lng(W / 2 - ntx);
+    clat = y2lat(midY() - nty);
+    render();
+    report();
+  }
+
+  // ---------------- 手势 ----------------
+  var pointers = {};
+  var panning = false, lastX = 0, lastY = 0, moved = 0;
+  var pinchDist = 0;
+
+  function pcount() { var c = 0; for (var k in pointers) c++; return c; }
+  function pdistance() {
+    var ids = Object.keys(pointers);
+    if (ids.length < 2) return 0;
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+  }
+  function localPoint(e) {
+    var r = mapEl.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  mapEl.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    var p = localPoint(e);
+    pointers[e.pointerId] = p;
+    try { mapEl.setPointerCapture(e.pointerId); } catch (err) { }
+    if (pcount() === 1) {
+      panning = true; lastX = p.x; lastY = p.y; moved = 0;
+    } else if (pcount() === 2) {
+      panning = false; pinchDist = pdistance();
+    }
+    e.preventDefault();
+  });
+
+  mapEl.addEventListener("pointermove", function (e) {
+    if (!(e.pointerId in pointers)) return;
+    var p = localPoint(e);
+    pointers[e.pointerId] = p;
+
+    if (pcount() >= 2) {
+      var d = pdistance();
+      if (!pinchDist) { pinchDist = d; return; }
+      var ratio = d / pinchDist;
+      var ids = Object.keys(pointers);
+      var mx = (pointers[ids[0]].x + pointers[ids[1]].x) / 2;
+      var my = (pointers[ids[0]].y + pointers[ids[1]].y) / 2;
+      if (ratio > 1.4) { pinchDist = d; setZoom(z + 1, mx, my); }
+      else if (ratio < 0.71) { pinchDist = d; setZoom(z - 1, mx, my); }
+      return;
+    }
+
+    if (!panning) return;
+    var dx = p.x - lastX, dy = p.y - lastY;
+    lastX = p.x; lastY = p.y;
+    moved += Math.abs(dx) + Math.abs(dy);
+    clng = x2lng(lng2x(clng) - dx);
+    clat = y2lat(lat2y(clat) - dy);
+    scheduleRender();
+    e.preventDefault();
+  });
+
+  function endPointer(e) {
+    var wasPanning = panning;
+    var single = pcount() === 1;
+    delete pointers[e.pointerId];
+    if (single && wasPanning && moved <= 8) {
+      var p = localPoint(e);
+      pickAt(p.x, p.y);
+    }
+    if (pcount() < 2) pinchDist = 0;
+    if (pcount() === 0) panning = false;
+  }
+
+  mapEl.addEventListener("pointerup", endPointer);
+  mapEl.addEventListener("pointercancel", function (e) {
+    delete pointers[e.pointerId];
+    if (pcount() < 2) pinchDist = 0;
+    if (pcount() === 0) panning = false;
+  });
+
+  function pickAt(sx, sy) {
+    var lat = y2lat(sy - ty());
+    var lng = x2lng(sx - tx());
+    setMarker(lat, lng);
+    showToast(source === "gcj" ? "已选点（GCJ-02 底图，会换算成 WGS-84）" : "已选点（WGS-84 底图）");
+  }
+
+  document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  document.getElementById("zin").addEventListener("click", function () { setZoom(z + 1); });
+  document.getElementById("zout").addEventListener("click", function () { setZoom(z - 1); });
+
+  var toastTimer = null;
+  function showToast(text) {
+    toastEl.textContent = text;
+    toastEl.style.opacity = "1";
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.style.opacity = "0"; }, 2600);
+  }
+
+  // ---------------- 对外接口（Kotlin 调用）----------------
+  window.init = function (lat, lng, zoom, src, insetTop, insetBottom) {
+    source = (src === "wgs") ? "wgs" : "gcj";
+    z = Math.max(3, Math.min(SRC[source].max, zoom || 16));
+    clat = lat; clng = lng;
+    INSET_T = insetTop || 0;
+    INSET_B = insetBottom || 0;
+    measure();
+    clearTiles();
+    setMarker(lat, lng, true);
+    render();
+    // 视口尺寸可能要下一帧才准，再补一次
+    requestAnimationFrame(relayout);
+    setTimeout(relayout, 150);
+    report();
+    if (window.Android && Android.onInfo) {
+      Android.onInfo(source === "gcj" ? "高德底图 · GCJ-02 · 点击地图选点" : "OSM 底图 · WGS-84 · 点击地图选点");
+    }
+  };
+
+  window.setInsets = function (top, bottom) {
+    INSET_T = top || 0;
+    INSET_B = bottom || 0;
+    render();
+  };
+
+  window.addEventListener("resize", relayout);
+
+  // 视口真正量出来（或旋转屏幕）后自动校正
+  try {
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { scheduleRender(); }).observe(mapEl);
+    }
+  } catch (e) { }
+
+  measure();
+})();
+</script>
+</body>
+</html>
