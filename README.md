@@ -10,7 +10,7 @@
 |---|---|
 | 包名 | `com.sideproject.mocklocation` |
 | 系统要求 | Android 7.0（API 24）及以上 |
-| 体积 | 约 690 KB |
+| 体积 | 约 680 KB |
 | 依赖 | 只有 androidx appcompat / core-ktx，没有第三方 SDK |
 
 ![界面](docs/screenshot-main.png)
