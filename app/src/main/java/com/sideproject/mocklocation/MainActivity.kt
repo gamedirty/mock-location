@@ -49,6 +49,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvBanner: TextView
     private lateinit var btnDevOptions: TextView
 
+    private lateinit var tvSelfTest: TextView
+    private lateinit var tvVerdict: TextView
+    private lateinit var btnSelfTest: TextView
+    private lateinit var btnCopyDiag: TextView
+    private lateinit var btnLocSettings: TextView
+
     private lateinit var etLat: EditText
     private lateinit var etLng: EditText
     private lateinit var etAcc: EditText
@@ -136,6 +142,12 @@ class MainActivity : AppCompatActivity() {
         bannerSetup = findViewById(R.id.bannerSetup)
         tvBanner = findViewById(R.id.tvBanner)
         btnDevOptions = findViewById(R.id.btnDevOptions)
+
+        tvSelfTest = findViewById(R.id.tvSelfTest)
+        tvVerdict = findViewById(R.id.tvVerdict)
+        btnSelfTest = findViewById(R.id.btnSelfTest)
+        btnCopyDiag = findViewById(R.id.btnCopyDiag)
+        btnLocSettings = findViewById(R.id.btnLocSettings)
 
         etLat = findViewById(R.id.etLat)
         etLng = findViewById(R.id.etLng)
@@ -271,6 +283,10 @@ class MainActivity : AppCompatActivity() {
             logLines.clear()
             tvLog.text = ""
         }
+
+        btnSelfTest.setOnClickListener { runSelfTest() }
+        btnCopyDiag.setOnClickListener { copyDiagnostics() }
+        btnLocSettings.setOnClickListener { openLocationSettings() }
     }
 
     // ------------------------------------------------------------ 渲染
@@ -653,6 +669,161 @@ class MainActivity : AppCompatActivity() {
             "✓ 开始巡航：${Geo.fmtDelta(total)} @ ${String.format(Locale.US, "%.1f", speed)} m/s" +
                 "（约 ${fmtDuration(total / speed)}），${if (chipLoop.isSelected) "循环" else "到终点停下"}",
         )
+    }
+
+    // ------------------------------------------------------------ 自检
+
+    private val selfTestResults = LinkedHashMap<String, Location>()
+
+    private fun Location.mockFlag(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock
+        else @Suppress("DEPRECATION") isFromMockProvider
+
+    /**
+     * 按普通应用的方式向系统要一次位置，看看到底发回来的是什么。
+     * 用来区分两种"没生效"：系统根本没发模拟位置，还是目标应用自己拒绝模拟位置。
+     */
+    @SuppressLint("MissingPermission")
+    private fun runSelfTest() {
+        if (!MockEngine.hasLocationPermission(this)) {
+            appendLog("自检需要定位权限")
+            requestPermissionsIfNeeded(force = true)
+            return
+        }
+        val lm = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        if (lm == null) {
+            toast("这台设备没有定位服务")
+            return
+        }
+
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, "fused")
+        selfTestResults.clear()
+        for (p in providers) {
+            runCatching { lm.getLastKnownLocation(p) }.getOrNull()
+                ?.let { selfTestResults[it.provider ?: p] = it }
+        }
+        renderSelfTest("…正在监听系统回传（4 秒）")
+
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                selfTestResults[location.provider ?: "?"] = location
+                renderSelfTest(null)
+            }
+
+            override fun onProviderEnabled(provider: String) {}
+            override fun onProviderDisabled(provider: String) {}
+
+            @Deprecated("Deprecated in Java")
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        }
+        for (p in providers) {
+            runCatching { lm.requestLocationUpdates(p, 0L, 0f, listener, Looper.getMainLooper()) }
+        }
+        ui.postDelayed({
+            runCatching { lm.removeUpdates(listener) }
+            renderSelfTest(null)
+            appendLog("自检完成")
+        }, 4000L)
+    }
+
+    private fun renderSelfTest(status: String?) {
+        val target = MockEngine.currentTarget()
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, "fused")
+        val sb = StringBuilder()
+        var near = 0
+        var far = 0
+        var mockFlagged = false
+
+        for (p in providers) {
+            val l = selfTestResults[p]
+            if (l == null) {
+                sb.append(String.format(Locale.US, "%-7s 无数据\n", p))
+                continue
+            }
+            val dist = Geo.distance(Waypoint(l.latitude, l.longitude), target)
+            val flag = l.mockFlag()
+            if (flag) mockFlagged = true
+            if (dist < 100.0) near++ else far++
+            // 拆两行：窄屏上单行会折行，读起来更乱
+            sb.append(String.format(Locale.US, "%-7s %.6f, %.6f\n", p, l.latitude, l.longitude))
+            sb.append(
+                String.format(
+                    Locale.US,
+                    "        ±%.0fm   %s   离目标 %s\n",
+                    l.accuracy, if (flag) "模拟✔" else "未标记", Geo.fmtDelta(dist),
+                ),
+            )
+        }
+        if (status != null) sb.append(status).append('\n')
+        tvSelfTest.text = sb.toString().trimEnd()
+
+        val good: Boolean
+        val verdict: String
+        when {
+            !MockEngine.state.running -> {
+                good = false
+                verdict = "模拟没在跑：先点底部「开始模拟」，再回来自检。"
+            }
+            near > 0 && mockFlagged -> {
+                good = true
+                verdict = "系统层面已经生效：普通应用按常规方式取位置，拿到的就是你的模拟坐标，" +
+                    "而且带着「模拟」标记。某个应用如果还是显示真实位置，就是它自己识别并拒绝了模拟位置" +
+                    "（见上面的说明），这种情况本应用无解。"
+            }
+            near > 0 -> {
+                good = true
+                verdict = "系统发出的位置就是你的目标坐标（没带模拟标记）。目标应用若仍显示真实位置，" +
+                    "说明它用的是自己那套网络定位（WiFi/基站）。"
+            }
+            far > 0 -> {
+                good = false
+                verdict = "系统发回来的还是真实位置，模拟没生效：确认本应用仍被选为「模拟位置信息应用」，" +
+                    "然后停止、重新开始一次模拟。"
+            }
+            else -> {
+                good = false
+                verdict = "一个位置都没取到：先确认系统的定位总开关是打开的。"
+            }
+        }
+        tvVerdict.text = verdict
+        tvVerdict.setTextColor(ContextCompat.getColor(this, if (good) R.color.accent else R.color.amber))
+    }
+
+    private fun copyDiagnostics() {
+        val st = MockEngine.state
+        val sb = StringBuilder()
+        sb.append("位置模拟 · 自检报告\n")
+        sb.append("设备: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
+        sb.append("系统: Android ").append(Build.VERSION.RELEASE)
+            .append(" (API ").append(Build.VERSION.SDK_INT).append(")  ").append(Build.DISPLAY).append('\n')
+        sb.append("已选为模拟位置应用: ").append(MockEngine.isMockAppSelected(this)).append('\n')
+        sb.append("定位权限: ").append(MockEngine.hasLocationPermission(this)).append('\n')
+        sb.append("模拟运行中: ").append(st.running)
+            .append("  providers=").append(st.providers.joinToString(","))
+        if (st.failedProviders.isNotEmpty()) {
+            sb.append("  失败=").append(st.failedProviders.joinToString(","))
+        }
+        sb.append('\n')
+        sb.append("目标坐标: ").append(Geo.fmt(st.lat)).append(", ").append(Geo.fmt(st.lng))
+            .append("  ±").append(st.accuracy.toInt()).append("m\n")
+        sb.append("--- 自检 ---\n").append(tvSelfTest.text).append('\n')
+        sb.append("--- 判定 ---\n").append(tvVerdict.text).append('\n')
+        sb.append("--- 日志 ---\n").append(logLines.joinToString("\n"))
+
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("diag", sb.toString()))
+        toast("诊断信息已复制，可以直接粘给我")
+    }
+
+    private fun openLocationSettings() {
+        for (action in listOf(Settings.ACTION_LOCATION_SOURCE_SETTINGS, Settings.ACTION_SETTINGS)) {
+            try {
+                startActivity(Intent(action))
+                return
+            } catch (_: Throwable) {
+            }
+        }
+        toast("没能打开定位设置，手动进：设置 → 位置信息")
     }
 
     // ------------------------------------------------------------ 收藏地点

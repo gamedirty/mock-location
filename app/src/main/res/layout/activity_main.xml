@@ -116,6 +116,92 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- ============ 自检 ============ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="自检 · 模拟到底生效没有" />
+
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="点一下，就按普通应用的方式向系统要一次位置，看看系统发回来的是不是你的模拟坐标、有没有被标记成「模拟」。目标应用不听话时先看这里。" />
+
+                <TextView
+                    android:id="@+id/tvSelfTest"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:fontFamily="monospace"
+                    android:lineSpacingExtra="3dp"
+                    android:padding="10dp"
+                    android:text="还没跑过自检"
+                    android:textColor="@color/text"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvVerdict"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="3dp"
+                    android:textColor="@color/text_dim"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnSelfTest"
+                        style="@style/PanelBtn"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="取一次位置看看" />
+
+                    <TextView
+                        android:id="@+id/btnCopyDiag"
+                        style="@style/PanelBtn"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="复制诊断信息" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnLocSettings"
+                    style="@style/PanelBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="打开系统定位设置（关掉 WiFi 辅助定位）" />
+
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:lineSpacingExtra="3dp"
+                    android:text="如果自检显示系统发回来的就是模拟坐标、并且带「模拟」标记，但某个应用还是显示真实位置，那就是它自己识别并拒绝了模拟位置。高德地图的定位 SDK 从 6.5.1 起会默认检测虚拟定位并直接返回定位失败；这类识别发生在应用那一侧，普通应用（包括本应用）没有任何办法绕过，只能靠 root/Xposed 或虚拟机方案，本应用不做这些。\n\n能提高成功率的一般是这三件事：① 关掉 WiFi（含「WLAN 扫描」「蓝牙扫描」）；② 系统定位模式改成「仅设备/GPS」；③ 把目标应用强行停止、清掉缓存再打开。" />
+            </LinearLayout>
+
             <!-- ============ 目标坐标 ============ -->
             <LinearLayout
                 android:layout_width="match_parent"
