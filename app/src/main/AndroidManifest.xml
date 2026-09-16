@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      这个权限本身早就废弃、也不会被真正授予（android:protectionLevel=signature|development），
+      但系统「开发者选项 → 选择模拟位置信息应用」的 AppPicker 就是按"是否声明了它"来筛选列表的，
+      不声明的话应用根本不会出现在那个选择列表里。所以必须保留。
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation,ProtectedPermissions" />
 
     <!-- 地图选点：加载在线瓦片 -->
     <uses-permission android:name="android.permission.INTERNET" />
