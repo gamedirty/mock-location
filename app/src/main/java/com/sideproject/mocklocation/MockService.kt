@@ -58,10 +58,14 @@ class MockService : Service() {
             MockEngine.addListener(l)
         }
         MockEngine.startTicking()
+        if (Prefs.overlayEnabled(this) && OverlayController.canDraw(this)) {
+            runCatching { OverlayController.show(this) }
+        }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        runCatching { OverlayController.hide(this) }
         listener?.let { MockEngine.removeListener(it) }
         listener = null
         MockEngine.stopTicking()

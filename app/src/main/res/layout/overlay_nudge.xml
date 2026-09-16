@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ovRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card"
+    android:orientation="vertical"
+    android:padding="6dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/ovHandle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingLeft="4dp"
+            android:paddingTop="4dp"
+            android:paddingRight="4dp"
+            android:paddingBottom="4dp"
+            android:text="⠿ 拖动"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/ovClose"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:gravity="center"
+            android:text="×"
+            android:textColor="@color/text_dim"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/ovCoords"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:paddingBottom="4dp"
+        android:text="--"
+        android:textColor="@color/accent"
+        android:textSize="9sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/ovNW"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:text="↖" />
+
+        <TextView
+            android:id="@+id/ovN"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="↑" />
+
+        <TextView
+            android:id="@+id/ovNE"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="↗" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/ovW"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:text="←" />
+
+        <TextView
+            android:id="@+id/ovStep"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_input"
+            android:text="10m"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/ovE"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="→" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/ovSW"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:text="↙" />
+
+        <TextView
+            android:id="@+id/ovS"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="↓" />
+
+        <TextView
+            android:id="@+id/ovSE"
+            style="@style/DpadBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="↘" />
+    </LinearLayout>
+
+</LinearLayout>

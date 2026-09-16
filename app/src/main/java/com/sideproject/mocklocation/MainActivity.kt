@@ -11,6 +11,7 @@ import android.graphics.Typeface
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -64,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnHere: TextView
     private lateinit var btnPaste: TextView
     private lateinit var btnCopy: TextView
+    private lateinit var chipOverlay: TextView
 
     private lateinit var stepChips: List<TextView>
     private lateinit var tvStepCenter: TextView
@@ -112,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         appendLog("就绪。当前目标 ${Geo.fmt(MockEngine.state.lat)}, ${Geo.fmt(MockEngine.state.lng)}")
         requestPermissionsIfNeeded()
         refreshBanner()
+        refreshOverlayChip()
         renderPresets()
     }
 
@@ -129,6 +132,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // 用户可能刚从系统设置里授权回来
         refreshBanner()
+        refreshOverlayChip()
+        if (Prefs.overlayEnabled(this) && OverlayController.canDraw(this) &&
+            MockEngine.state.running && !OverlayController.isShowing()
+        ) {
+            runCatching { OverlayController.show(this) }
+        }
     }
 
     // ------------------------------------------------------------ 绑定
@@ -158,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         btnHere = findViewById(R.id.btnHere)
         btnPaste = findViewById(R.id.btnPaste)
         btnCopy = findViewById(R.id.btnCopy)
+        chipOverlay = findViewById(R.id.chipOverlay)
 
         stepChips = listOf(
             findViewById(R.id.chipStep0),
@@ -233,6 +243,7 @@ class MainActivity : AppCompatActivity() {
         btnHere.setOnClickListener { fetchRealLocation() }
         btnPaste.setOnClickListener { pasteFromClipboard() }
         btnCopy.setOnClickListener { copyCoords() }
+        chipOverlay.setOnClickListener { toggleOverlay() }
 
         stepChips.forEachIndexed { i, chip ->
             chip.setOnClickListener {
@@ -293,6 +304,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun render(st: MockState) {
         tvCoords.text = "${Geo.fmt(st.lat)}, ${Geo.fmt(st.lng)}"
+        syncFieldsFromTarget()
 
         if (st.running) {
             tvStatus.text = "模拟中"
@@ -824,6 +836,71 @@ class MainActivity : AppCompatActivity() {
             }
         }
         toast("没能打开定位设置，手动进：设置 → 位置信息")
+    }
+
+    // ------------------------------------------------------------ 悬浮微调按钮
+
+    private fun toggleOverlay() {
+        val wantOn = !Prefs.overlayEnabled(this)
+        if (wantOn && !OverlayController.canDraw(this)) {
+            appendLog("悬浮按钮需要「显示在其他应用上层」权限")
+            AlertDialog.Builder(this)
+                .setTitle("先给悬浮窗权限")
+                .setMessage(
+                    "要让按钮浮在别的应用上面，得先给「${getString(R.string.app_name)}」" +
+                        "授予「显示在其他应用上层」权限。\n\n" +
+                        "在系统页面里找到「${getString(R.string.app_name)}」把开关打开，回来再点一次。",
+                )
+                .setPositiveButton("去授权") { _, _ -> requestOverlayPermission() }
+                .setNegativeButton("取消", null)
+                .show()
+            return
+        }
+        Prefs.saveOverlayEnabled(this, wantOn)
+        if (wantOn) {
+            if (MockEngine.state.running) {
+                OverlayController.show(this)
+                appendLog("悬浮微调按钮已开启，去别的应用上面也能调")
+            } else {
+                appendLog("悬浮微调按钮已开启，开始模拟后出现")
+                toast("开始模拟后它就会出现")
+            }
+        } else {
+            OverlayController.hide(this)
+            appendLog("悬浮微调按钮已关闭")
+        }
+        refreshOverlayChip()
+    }
+
+    private fun requestOverlayPermission() {
+        try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+        } catch (t: Throwable) {
+            toast("没能打开权限页，手动去：设置 → 应用 → 特殊权限 → 显示在其他应用上层")
+        }
+    }
+
+    private fun refreshOverlayChip() {
+        val on = Prefs.overlayEnabled(this)
+        chipOverlay.isSelected = on
+        chipOverlay.text =
+            if (on) "悬浮微调按钮：已开启（浮在别的应用上面）"
+            else "悬浮微调按钮（浮在别的应用上面调位置）"
+    }
+
+    /** 悬浮按钮、收藏切换都可能改目标点，输入框没在编辑就跟着同步 */
+    private fun syncFieldsFromTarget() {
+        if (etLat.hasFocus() || etLng.hasFocus()) return
+        val t = MockEngine.currentTarget()
+        val lat = Geo.fmt(t.lat)
+        val lng = Geo.fmt(t.lng)
+        if (etLat.text.toString() != lat) etLat.setText(lat)
+        if (etLng.text.toString() != lng) etLng.setText(lng)
     }
 
     // ------------------------------------------------------------ 收藏地点

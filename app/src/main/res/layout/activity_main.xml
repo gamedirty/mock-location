@@ -366,6 +366,14 @@
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/chipOverlay"
+                    style="@style/StepChip"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="悬浮微调按钮（浮在别的应用上面调位置）" />
+
+                <TextView
                     style="@style/FieldLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

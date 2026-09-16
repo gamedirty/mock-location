@@ -17,6 +17,9 @@ object Prefs {
     private const val K_SOURCE = "map_source"
     private const val K_START = "route_start"
     private const val K_END = "route_end"
+    private const val K_OVERLAY = "overlay_enabled"
+    private const val K_OVERLAY_X = "overlay_x"
+    private const val K_OVERLAY_Y = "overlay_y"
     private const val SEP = "\u0001"
 
     private fun sp(ctx: Context) = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -93,4 +96,16 @@ object Prefs {
     /** 地图坐标系：gcj = 高德（国内快、中文）、wgs = OSM（原生 WGS-84 无偏移） */
     fun mapSource(ctx: Context): String = sp(ctx).getString(K_SOURCE, "gcj") ?: "gcj"
     fun saveMapSource(ctx: Context, v: String) = sp(ctx).edit().putString(K_SOURCE, v).apply()
+
+    // ---- 悬浮微调按钮 ----
+
+    fun overlayEnabled(ctx: Context): Boolean = sp(ctx).getBoolean(K_OVERLAY, false)
+    fun saveOverlayEnabled(ctx: Context, v: Boolean) =
+        sp(ctx).edit().putBoolean(K_OVERLAY, v).apply()
+
+    fun overlayX(ctx: Context): Int = sp(ctx).getInt(K_OVERLAY_X, 24)
+    fun overlayY(ctx: Context): Int = sp(ctx).getInt(K_OVERLAY_Y, 260)
+
+    fun saveOverlayPos(ctx: Context, x: Int, y: Int) =
+        sp(ctx).edit().putInt(K_OVERLAY_X, x).putInt(K_OVERLAY_Y, y).apply()
 }
